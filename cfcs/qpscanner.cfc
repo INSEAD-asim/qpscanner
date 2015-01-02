@@ -2,20 +2,21 @@
 <cfcomponent output=false>
 
 	<cffunction name="init" returntype="any" output=false access="public">
-		<cfargument name="StartingDir"           type="String"  required_       hint="Directory to begin scanning the contents of." />
-		<cfargument name="OutputFormat"          type="String"  default="html"  hint="Format of scan results: [html,wddx]" />
-		<cfargument name="RequestTimeout"        type="Numeric" default="-1"    hint="Override Request Timeout, -1 to ignore" />
-		<cfargument name="recurse"               type="Boolean" default=false   hint="Also scan sub-directories?" />
-		<cfargument name="Exclusions"            type="String"  default=""      hint="Exclude files & directories matching this regex." />
-		<cfargument name="scanOrderBy"           type="Boolean" default=true    hint="Include ORDER BY statements in scan results?" />
-		<cfargument name="scanQoQ"               type="Boolean" default=true    hint="Include Query of Queries in scan results?" />
-		<cfargument name="scanBuiltInFunc"       type="Boolean" default=true    hint="Include Built-in Functions in scan results?" />
-		<cfargument name="showScopeInfo"         type="Boolean" default=true    hint="Show scope information in scan results?" />
-		<cfargument name="highlightClientScopes" type="Boolean" default=true    hint="Highlight scopes with greater risk?" />
-		<cfargument name="ClientScopes"          type="String"  default="form,url,client,cookie" hint="Scopes considered client scopes." />
-		<cfargument name="NumericFunctions"      type="String"  default="val,year,month,day,hour,minute,second,asc,dayofweek,dayofyear,daysinyear,quarter,week,fix,int,round,ceiling,gettickcount,len,min,max,pi,arraylen,listlen,structcount,listvaluecount,listvaluecountnocase,rand,randrange" />
-		<cfargument name="BuiltInFunctions"      type="String"  default="now,#Arguments.NumericFunctions#" />
-		<cfargument name="ReturnSqlSegments"     type="Boolean" default=false   hint="Include separate SELECT/FROM/WHERE/etc in result data?" />
+		<cfargument name="StartingDir"              type="String"  required_       hint="Directory to begin scanning the contents of." />
+		<cfargument name="OutputFormat"             type="String"  default="html"  hint="Format of scan results: [html,wddx]" />
+		<cfargument name="RequestTimeout"           type="Numeric" default="-1"    hint="Override Request Timeout, -1 to ignore" />
+		<cfargument name="recurse"                  type="Boolean" default=false   hint="Also scan sub-directories?" />
+		<cfargument name="Exclusions"               type="String"  default=""      hint="Exclude files & directories matching this regex." />
+		<cfargument name="scanOrderBy"              type="Boolean" default=true    hint="Include ORDER BY statements in scan results?" />
+		<cfargument name="scanQoQ"                  type="Boolean" default=true    hint="Include Query of Queries in scan results?" />
+		<cfargument name="scanBuiltInFunc"          type="Boolean" default=true    hint="Include Built-in Functions in scan results?" />
+		<cfargument name="scanPreserveSingleQuotes" type="boolean" default=true    hint="Include PreserveSingleQuotes in scan results?" />
+		<cfargument name="showScopeInfo"            type="Boolean" default=true    hint="Show scope information in scan results?" />
+		<cfargument name="highlightClientScopes"    type="Boolean" default=true    hint="Highlight scopes with greater risk?" />
+		<cfargument name="ClientScopes"             type="String"  default="form,url,client,cookie" hint="Scopes considered client scopes." />
+		<cfargument name="NumericFunctions"         type="String"  default="val,year,month,day,hour,minute,second,asc,dayofweek,dayofyear,daysinyear,quarter,week,fix,int,round,ceiling,gettickcount,len,min,max,pi,arraylen,listlen,structcount,listvaluecount,listvaluecountnocase,rand,randrange" />
+		<cfargument name="BuiltInFunctions"         type="String"  default="now,#Arguments.NumericFunctions#" />
+		<cfargument name="ReturnSqlSegments"        type="Boolean" default=false   hint="Include separate SELECT/FROM/WHERE/etc in result data?" />
 
 		<cfloop item="local.Arg" collection=#Arguments# >
 			<cfset This[Arg] = Arguments[Arg]/>
@@ -42,6 +43,7 @@
 			, killCfTag        = new cfregex( '(?si)<cf[a-z]{2,}[^>]*+>' ) <!--- Deliberately excludes Custom Tags and CFX --->
 			, killOrderBy      = new cfregex( '(?si)\bORDER BY\b.*?$' )
 			, killBuiltIn      = new cfregex( '(?si)##(#ListChangeDelims(This.BuiltInFunctions,'|')#)\([^)]*\)##' )
+			, killPSQ          = new cfregex( '(?si)##preservesinglequotes\([^)]*\)##' )
 			, killEscapedHash  = new cfregex ('(?:##{2})++')
 			, findScopes       = new cfregex( '(?si)(?<=##([a-z]{1,20}\()?)[^\(##<]+?(?=\.[^##<]+?##)' )
 			, findQueryName    = new cfregex( '(?<=\bname\s{0,99}=\s{0,99})(?:"[^"]++"|''[^'']++''|[^"''\s]++)' )
@@ -221,6 +223,9 @@
 			</cfif>
 			<cfif NOT This.scanBuiltInFunc>
 				<cfset rekCode = Variables.Regexes['killBuiltIn'].replace( rekCode , '' )/>
+			</cfif>
+			<cfif NOT This.scanPreserveSingleQuotes>
+				<cfset rekCode = Variables.Regexes['killPSQ'].replace( rekCode , '' )/>
 			</cfif>
 
 			<cfset rekCode =  Variables.Regexes['killEscapedHash'].replace( rekCode , '' ) />
